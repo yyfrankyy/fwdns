@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+'use strict';
+
+if (process.env.NODE_ENV !== 'production'){
+  try { require('longjohn'); } catch (e) {} }
+
+const debug = require('debug')('fwdns:server');
+const dnsd = require('./dnsd/named');
+const dns = require('./dns/dns');
+
+function collectZone(zone, zones) {
+  zone = zone.split(',')
+  zones[zone[0]] = zone[1];
+  return zones;
+}
+
+const option = require('commander')
+  .version(require('./package.json').version)
+  .option('-p, --port [6666]', 'Port to bind', val => parseInt(val), 6666)
+  .option('-l, --listen [127.0.0.1]', 'Address to listen', '127.0.0.1')
+  .option('-z, --zone [8.8.8.8,/path/to/zone/name.json]',
+    'Zone setting, split by comma', collectZone, {})
+  .parse(process.argv);
+
+console.log(option.zone);
