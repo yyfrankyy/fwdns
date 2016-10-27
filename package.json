@@ -1,0 +1,28 @@
+{
+  "name": "fwdns",
+  "version": "1.0.0",
+  "description": "A DNS Forwarder",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/yyfrankyy/fwdns.git"
+  },
+  "keywords": [
+    "dns",
+    "forwarder"
+  ],
+  "author": "Frank Xu <yyfrankyy@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yyfrankyy/fwdns/issues"
+  },
+  "homepage": "https://github.com/yyfrankyy/fwdns#readme",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "debug": "^2.2.0",
+    "retry": "^0.10.0"
+  }
+}
