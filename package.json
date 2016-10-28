@@ -4,7 +4,7 @@
   "description": "A DNS Forwarder",
   "bin": "./fwdns",
   "scripts": {
-    "test": "npm test"
+    "test": "node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
@@ -25,5 +25,10 @@
     "debug": "^2.2.0",
     "defaultable": "^0.7.2",
     "retry": "^0.10.0"
+  },
+  "devDependencies": {
+    "benchmark": "^2.1.1",
+    "chai": "^3.5.0",
+    "mocha": "^3.1.2"
   }
 }
