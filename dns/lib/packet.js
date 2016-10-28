@@ -20,7 +20,7 @@
 
 'use strict';
 
-var NDP = require('native-dns-packet'),
+var NDP = require('../../packet/packet'),
     util = require('util');
 
 var Packet = module.exports = function(socket) {

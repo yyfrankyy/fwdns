@@ -25,8 +25,8 @@ var fs = require('fs'),
     net = require('net'),
     os = require('os'),
     util = require('util'),
-    Cache = require('native-dns-cache'),
-    consts = require('native-dns-packet').consts,
+    Cache = require('../../cache/'),
+    consts = require('../../packet/packet').consts,
     path = require('path'),
     utils = require('./utils');
 
