@@ -8,7 +8,8 @@ const debug = require('debug')('fwdns:server');
 const dnsd = require('./dnsd/named');
 const dns = require('./dns/dns');
 const Zone = require('./zone');
-const Constants = require('./dnsd/constants');
+const consts = require('./packet/').consts;
+const ip6 = require('ip6');
 
 function collectZone(zone, zones) {
   if (zone.endsWith('.json')) {
@@ -26,7 +27,7 @@ const option = require('commander')
   .version(require('./package.json').version)
   .option('-p, --port [6666]', 'Port to bind', val => parseInt(val), 6666)
   .option('-l, --listen [127.0.0.1]', 'Address to listen', '127.0.0.1')
-  .option('-z, --zone [8.8.8.8]', 'Default zone', collectZone, [])
+  .option('-z, --zone <8.8.8.8>', 'Default zone', collectZone, [])
   .option('-t, --timeout [5000]',
     'Timeout forwarding requests',
      val => parseInt(val), 5000)
@@ -39,8 +40,9 @@ const option = require('commander')
   .parse(process.argv);
 
 const SupportTypes = [
-  'A'/*, 'MX', 'CNAME', 'TXT', 'PTR',
-  'AAAA', 'NS', 'SOA', 'SRV', 'DS'*/
+  'A', 'MX', 'CNAME', 'TXT', 'PTR',
+  'AAAA', 'NS', 'SOA', 'SRV'
+  //, 'DS' // unsupported by native-dns-packet
 ];
 
 const server = dnsd.createServer((req, res) => {
@@ -57,11 +59,11 @@ const server = dnsd.createServer((req, res) => {
     return res.end();
   }
 
-  question.class = 1; // only IN is supported now;
+  question.class = consts.NAME_TO_QCLASS[question.class] || 1;
 
-  var forwardReq = dns.Request({
+  const forwardReq = dns.Request({
     question: dns.Question(question),
-    server: { address: '119.29.29.29' },
+    server: { address: option.zone[0] },
     timeout: option.timeout,
   });
 
@@ -70,16 +72,56 @@ const server = dnsd.createServer((req, res) => {
     debug('Timeout in making request');
   });
 
-  forwardReq.on('error', (err) => {
+  forwardReq.on('error', err => {
     res.responseCode = 2;
     debug('forward error', err);
   });
 
   forwardReq.on('message', (err, message) => {
-    res.answer = message.answer.map((rec) => {
-      rec.type = Constants.type_to_label(rec.type);
-      rec.class = 'IN';
-      rec.data = rec.address;
+    const anw = question.type == 'CNAME' ? message.authority : message.answer;
+    res.answer = anw.map((rec) => {
+      rec.type = consts.qtypeToName(rec.type);
+      rec.class = consts.QCLASS_TO_NAME[rec.class] || 'IN';
+      switch (rec.type) {
+        case 'A':
+          rec.data = rec.address;
+          break;
+        case 'AAAA':
+          rec.data = ip6.normalize(rec.address);
+          break;
+        case 'CNAME':
+          rec.data = [
+            rec.primary,
+            rec.admin,
+            rec.serial,
+            rec.refresh,
+            rec.retry,
+            rec.expiration,
+            rec.minimum
+          ];
+          break;
+        case 'MX':
+          rec.data = [rec.priority, rec.exchange];
+          break;
+        case 'TXT':
+        case 'SPF':
+          rec.data = rec.data;
+          break;
+        case 'SOA':
+          rec.data = {
+            rname: rec.primary,
+            mname: rec.admin,
+            serial: rec.serial,
+            refresh: rec.refresh,
+            retry: rec.retry,
+            expire: rec.expiration,
+            ttl: rec.minimum
+          };
+          break;
+        case 'SRV':
+          rec.data = rec;
+          break;
+      }
       return rec;
     });
   });

@@ -24,6 +24,7 @@
     "commander": "^2.9.0",
     "debug": "^2.2.0",
     "defaultable": "^0.7.2",
+    "ip6": "0.0.4",
     "retry": "^0.10.0"
   },
   "devDependencies": {
