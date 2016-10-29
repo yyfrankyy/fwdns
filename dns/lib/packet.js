@@ -20,7 +20,7 @@
 
 'use strict';
 
-var NDP = require('../../packet/packet'),
+var NDP = require('../../packet/'),
     util = require('util');
 
 var Packet = module.exports = function(socket) {

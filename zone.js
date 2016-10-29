@@ -4,7 +4,7 @@ class Zone {
   constructor(hosts, whitelist) {
     this.root = {};
     this.whitelist = whitelist;
-    this.hosts = hosts;
+    this.hosts = Array.isArray(hosts) ? hosts : [hosts];
     this.buildIndex();
   }
   buildIndex() {
@@ -42,6 +42,9 @@ class Zone {
       }
     }
     return matched;
+  }
+  hosts() {
+    return this.hosts;
   }
 }
 

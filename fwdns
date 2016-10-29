@@ -7,10 +7,16 @@ if (process.env.NODE_ENV !== 'production'){
 const debug = require('debug')('fwdns:server');
 const dnsd = require('./dnsd/named');
 const dns = require('./dns/dns');
+const Zone = require('./zone');
+const Constants = require('./dnsd/constants');
 
 function collectZone(zone, zones) {
-  zone = require(zone);
-  if (zone && Array.isArray(zone.hosts) && Array.isArray(zone.names)) {
+  if (zone.endsWith('.json')) {
+    zone = require(zone);
+    if (zone && Array.isArray(zone.hosts) && Array.isArray(zone.names)) {
+      zones.push(new Zone(name.hosts, zone.names));
+    }
+  } else {
     zones.push(zone);
   }
   return zones;
@@ -20,6 +26,10 @@ const option = require('commander')
   .version(require('./package.json').version)
   .option('-p, --port [6666]', 'Port to bind', val => parseInt(val), 6666)
   .option('-l, --listen [127.0.0.1]', 'Address to listen', '127.0.0.1')
+  .option('-z, --zone [8.8.8.8]', 'Default zone', collectZone, [])
+  .option('-t, --timeout [5000]',
+    'Timeout forwarding requests',
+     val => parseInt(val), 5000)
   .option('-f, --forward-zone [/path/to/forward/zone.json]',
     'Forward zone setting, {"hosts": ["8.8.8.8"], "names": ["google.com"]}',
      collectZone, [])
@@ -28,4 +38,64 @@ const option = require('commander')
      collectZone, [])
   .parse(process.argv);
 
-console.log(option.forwardZone);
+const SupportTypes = [
+  'A'/*, 'MX', 'CNAME', 'TXT', 'PTR',
+  'AAAA', 'NS', 'SOA', 'SRV', 'DS'*/
+];
+
+const server = dnsd.createServer((req, res) => {
+  const question = req.question[0], hostname = question.name;
+  const start = Date.now();
+  const tag = `[${pad(5, req.id)}/${pad(4, req.connection.type, ' ')}]`;
+  const timeStamp = [
+    tag, req.opcode, hostname, question.class, question.type].join(' ');
+
+  // TODO unsupported due to dnsd's broken implementation.
+  if (SupportTypes.indexOf(question.type) === -1) {
+    debug(timeStamp + ` +${Date.now() -  start}ms`);
+    res.responseCode = 2;
+    return res.end();
+  }
+
+  question.class = 1; // only IN is supported now;
+
+  var forwardReq = dns.Request({
+    question: dns.Question(question),
+    server: { address: '119.29.29.29' },
+    timeout: option.timeout,
+  });
+
+  forwardReq.on('timeout', () => {
+    res.responseCode = 2;
+    debug('Timeout in making request');
+  });
+
+  forwardReq.on('error', (err) => {
+    res.responseCode = 2;
+    debug('forward error', err);
+  });
+
+  forwardReq.on('message', (err, message) => {
+    res.answer = message.answer.map((rec) => {
+      rec.type = Constants.type_to_label(rec.type);
+      rec.class = 'IN';
+      rec.data = rec.address;
+      return rec;
+    });
+  });
+
+  forwardReq.on('end', () => {
+    debug(timeStamp + ` +${Date.now() -  start}ms`);
+    res.end();
+  });
+
+  forwardReq.send();
+});
+
+function pad(n, m, holder = '0') {
+  return String(Array(n + 1).join(holder) + m).slice(-n);
+}
+
+server.listen(option.port, option.address, () => {
+  debug(`start listening to ${option.address || ''}:${option.port}.`)
+});

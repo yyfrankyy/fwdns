@@ -26,7 +26,7 @@ var fs = require('fs'),
     os = require('os'),
     util = require('util'),
     Cache = require('../../cache/'),
-    consts = require('../../packet/packet').consts,
+    consts = require('../../packet/').consts,
     path = require('path'),
     utils = require('./utils');
 

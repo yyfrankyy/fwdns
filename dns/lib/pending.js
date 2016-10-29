@@ -24,7 +24,7 @@ var net = require('net'),
     util = require('util'),
     EventEmitter = require('events').EventEmitter,
     Packet = require('./packet'),
-    consts = require('../../packet/packet').consts,
+    consts = require('../../packet/').consts,
     UDPSocket = require('./utils').UDPSocket,
     TCPSocket = require('./utils').TCPSocket;
 
