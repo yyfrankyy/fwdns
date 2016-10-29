@@ -23,6 +23,16 @@ function collectZone(zone, zones) {
   return zones;
 }
 
+function collectLocalZone(zone, zones) {
+  if (zone.endsWith('.json')) {
+    zone = require(zone);
+    if (zone) {
+      Object.assign(zones, zone);
+    }
+  }
+  return zones;
+}
+
 const option = require('commander')
   .version(require('./package.json').version)
   .option('-p, --port [6666]', 'Port to bind', val => parseInt(val), 6666)
@@ -34,9 +44,9 @@ const option = require('commander')
   .option('-f, --forward-zone [/path/to/forward/zone.json]',
     'Forward zone setting, {"hosts": ["8.8.8.8"], "names": ["google.com"]}',
      collectZone, [])
-  .option('-l, --local-zone [/path/to/local/zone.json]',
-    'Local zone setting, {"hosts": ["127.0.0.1"], "names": ["abc.com"]}',
-     collectZone, [])
+  .option('-s, --local-zone [/path/to/local/zone.json]',
+    'Local zone setting, {"abc.com": "127.0.0.1"}',
+     collectLocalZone, [])
   .parse(process.argv);
 
 const SupportTypes = [
@@ -59,6 +69,22 @@ const server = dnsd.createServer((req, res) => {
     return res.end();
   }
 
+  let local = option.localZone[question.name];
+  if (local) {
+    if (!Array.isArray(local)) local = [local];
+    res.answer = local.map(val => {
+      return {
+        name: question.name,
+        type: 'A',
+        class: 'IN',
+        data: val,
+        ttl: 3600
+      }
+    });
+    debug(timeStamp + ` via local +${Date.now() -  start}ms`);
+    return res.end();;
+  }
+  
   const server = {};
   for (let fwz of option.forwardZone) {
     if (fwz.match(question.name)) {

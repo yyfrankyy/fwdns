@@ -1,6 +1,6 @@
 const Benchmark = require('benchmark');
 const suite = new Benchmark.Suite;
-const whitelist = require('./whitelist');
+const whitelist = require('./whitelist').names;
 
 const Zone = require('../zone');
 const zone = new Zone('114.114.114.114', whitelist);

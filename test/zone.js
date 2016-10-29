@@ -34,5 +34,8 @@ describe('zone', () => {
       assert.isNotOk(zone.match('com'));
       assert.isNotOk(zone.match('qqcn'));
     });
+    it('whole match', () => {
+      assert.isNotOk(zone.match('www.qq.com', true));
+    });
   })
 });

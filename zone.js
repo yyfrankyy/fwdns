@@ -25,14 +25,14 @@ class Zone {
       });
     return root;
   }
-  match(domain) {
+  match(domain, exact = false) {
     let subtree = this.root;
     const reversedDomain = reverse(domain).split('.');
     let matched = false;
-    for (let m of reversedDomain) {
+    for (let i = 0, m; m = reversedDomain[i]; i++) {
       if (m in subtree) {
         if (subtree[m].__ === 0) {
-          matched = true;
+          matched = exact ? !reversedDomain[i + 1] : true;
           break;
         } else {
           subtree = subtree[m];
