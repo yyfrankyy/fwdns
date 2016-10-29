@@ -176,8 +176,8 @@ function convert(rec) {
       break;
     case 'SOA':
       rec.data = {
-        rname: rec.primary,
-        mname: rec.admin,
+        rname: rec.admin,
+        mname: rec.primary,
         serial: rec.serial,
         refresh: rec.refresh,
         retry: rec.retry,
