@@ -134,6 +134,7 @@ const server = dnsd.createServer((req, res) => {
     debug(timeStamp + ` +${Date.now() -  start}ms`);
     res.end();
     return process.nextTick(() => {
+      if (!data) data = { authority: [], answer: [] };
       data.server = server;
       save(question, data);
     });
