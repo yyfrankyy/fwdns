@@ -25,6 +25,7 @@
     "debug": "^2.2.0",
     "defaultable": "^0.7.2",
     "ip6": "0.0.4",
+    "node-cache": "^4.1.0",
     "retry": "^0.10.0"
   },
   "devDependencies": {

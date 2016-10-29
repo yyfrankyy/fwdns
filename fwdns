@@ -11,6 +11,8 @@ const Zone = require('./zone');
 const consts = require('./packet/').consts;
 const ip6 = require('ip6');
 const IP_REGEX = /^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$/;
+const NodeCache = require('node-cache');
+const cache = new NodeCache({ useClones: false });
 
 function collectZone(zone, zones) {
   if (zone.endsWith('.json')) {
@@ -77,6 +79,18 @@ const server = dnsd.createServer((req, res) => {
     return res.end();
   }
 
+  const cached = get(question);
+  if (cached != null) {
+    const timeLeft = parseInt((ttl(question) - Date.now()) / 1000);
+    debug(timeStamp + ` via cache (ttl: ${timeLeft}) +${Date.now() -  start}ms`);
+    copy(cached, res, ['authority', 'answer'], (rec) => {
+      rec.ttl = timeLeft;
+      return rec;
+    });
+    res.end();
+    return;
+  }
+
   let local = option.localZone[question.name];
   if (local) {
     if (!Array.isArray(local)) local = [local];
@@ -90,6 +104,7 @@ const server = dnsd.createServer((req, res) => {
       }
     });
     debug(timeStamp + ` via local +${Date.now() -  start}ms`);
+    save(res);
     return res.end();;
   }
 
@@ -129,13 +144,12 @@ const server = dnsd.createServer((req, res) => {
       debug('forward error', err);
       return;
     }
-    ['authority', 'answer'].forEach(k => {
-      if (message[k]) res[k] = message[k].map(v => convert(v));
-    });
+    copy(message, res, ['authority', 'answer'], convert);
   });
 
   forwardReq.on('end', () => {
     debug(timeStamp + ` +${Date.now() -  start}ms`);
+    save(question, res);
     res.end();
   });
 
@@ -194,6 +208,32 @@ function convert(rec) {
       break;
   }
   return rec;
+}
+
+function save(question, res) {
+  const key = `${question.name} ${question.type}`;
+  const o = res.authority.length > 0 ? res.authority : res.answer;
+  const ttl = o.map(v => v.ttl);
+  cache.set(key, copy(res), ttl.length > 0 ? ttl[0] : 600);
+}
+
+function get(question) {
+  const key = `${question.name} ${question.type}`;
+  return cache.get(key);
+}
+
+function ttl(question) {
+  const key = `${question.name} ${question.type}`;
+  return cache.getTtl(key);
+}
+
+function copy(from, to = {}, keys = ['authority', 'answer'], mapper) {
+  keys.forEach(k => {
+    if (from[k]) {
+      to[k] = mapper ? from[k].map(v => mapper(v)) : from[k];
+    }
+  });
+  return to;
 }
 
 server.listen(option.port, option.address, () => {

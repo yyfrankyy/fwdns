@@ -26,7 +26,7 @@ var ipaddr = require('ipaddr.js'),
     EventEmitter = require('events').EventEmitter,
     PendingRequests = require('./pending'),
     Packet = require('./packet'),
-    consts = require('native-dns-packet').consts,
+    consts = require('../../packet/').consts,
     utils = require('./utils'),
     platform = require('./platform');
 
@@ -355,7 +355,7 @@ Resolve.prototype._handle = function(err, answer) {
           this._shouldContinue()) {
         debug('truncated', this._domain, answer);
         this.emit('truncated', err, answer);
-        
+
         // remove udp servers
         this._server_list = this._server_list.filter(function(server) {
           return server.type === 'tcp';
