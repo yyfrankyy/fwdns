@@ -28,12 +28,11 @@ $ fwdns -h
 ### Fast Zone Switching
 
 It's a very rare edge case for using a DNS forwarder like dnsmasq and unbound
-when there is over thousands of forward-zone settings. There is [a fork of
-dnsmasq](https://github.com/infinet/dnsmasq) solved the similar problems,
-both dnsmasq and unbound's CPU reach 100% over 10K of zones.
+when there is over thousands of forward-zone settings. There is [a fork of dnsmasq](https://github.com/infinet/dnsmasq) solving the similar problems, both dnsmasq and unbound's CPU reach 100%
+over 10K of zones.
 
-With a pre-indexed map, we can archive just 1ms for the query over 10K zones
-search, the algorithm is the same as [this fork(https://github.com/infinet/dnsmasq)
+With a pre-indexed map, we can archive less then 1ms for the query over 10K zones
+search, the algorithm is the same as [this fork](https://github.com/infinet/dnsmasq)
 although in JavaScript, the [implementation](https://github.com/yyfrankyy/fwdns/blob/master/zone.js)
 is much more easier. (but slower)
 
