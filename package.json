@@ -21,10 +21,13 @@
   },
   "homepage": "https://github.com/yyfrankyy/fwdns#readme",
   "dependencies": {
+    "binaryheap": "0.0.3",
+    "buffercursor": "0.0.12",
     "commander": "^2.9.0",
     "debug": "^2.2.0",
     "defaultable": "^0.7.2",
     "ip6": "0.0.4",
+    "ipaddr.js": "^1.2.0",
     "node-cache": "^4.1.0",
     "retry": "^0.10.0"
   },
