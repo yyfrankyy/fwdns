@@ -156,7 +156,7 @@ function convert(rec) {
       rec.data = ip6.normalize(rec.address);
       break;
     case 'CNAME':
-      rec.data = [
+      rec.data = rec.data || [
         rec.primary,
         rec.admin,
         rec.serial,
@@ -191,6 +191,7 @@ function convert(rec) {
       });
       break;
   }
+  // console.log(rec);
   return rec;
 }
 
@@ -264,13 +265,7 @@ function doQuery(question, server, callback) {
       debug('forward error', err);
       return;
     }
-    ['authority', 'answer'].forEach(k => {
-      if (message[k]) {
-        data[k] = message[k]
-          .filter(v => v.type === consts.nameToQtype(question.type))
-          .map(convert);
-      }
-    });
+    copy(message, data, ['authority', 'answer'], convert);
     callback(null, data);
   });
 
