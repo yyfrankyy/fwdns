@@ -200,12 +200,13 @@ const pending = {};
 
 function save(question, res) {
   const key = `${question.name} ${question.type}`;
-  const o = res.authority.length > 0 ? res.authority : res.answer;
+  const o = res.answer.length > 0 ? res.answer : res.authority;
   const ttls = o.map(v => v.ttl);
   const ttl = ttls.length > 0 ? ttls[0] : 600;
   cache.set(key, copy(res), ttl);
-  if (lastQuery[question.name] && pending[question.name] !== question.type &&
-     (Date.now() - lastQuery[question.name]) / 1000 - option.renewTimeout < 0) {
+  if (lastQuery[question.name] && ttl > 10 &&
+      pending[question.name] !== question.type &&
+     (Date.now() - lastQuery[question.name]) / 1000 < option.renewTimeout) {
     pending[question.name] = question.type;
     setTimeout(() => {
       doMultiQuery(question, res.server, (err, data) => {
