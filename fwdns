@@ -10,6 +10,7 @@ const dns = require('./dns/dns');
 const Zone = require('./zone');
 const consts = require('./packet/').consts;
 const ip6 = require('ip6');
+const IP_REGEX = /^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$/;
 
 function collectZone(zone, zones) {
   if (zone.endsWith('.json')) {
@@ -18,7 +19,9 @@ function collectZone(zone, zones) {
       zones.push(new Zone(zone.hosts, zone.names));
     }
   } else {
-    zones.push(zone);
+    if (IP_REGEX.test(zone)) {
+      zones.push(zone);
+    }
   }
   return zones;
 }
@@ -48,6 +51,11 @@ const option = require('commander')
     'Local zone setting, {"abc.com": "127.0.0.1"}',
      collectLocalZone, [])
   .parse(process.argv);
+
+if (option.zone.length === 0) {
+  console.error('a default zone is required. try `fwdns -z 8.8.8.8`');
+  process.exit(1);
+}
 
 const SupportTypes = [
   'A', 'MX', 'CNAME', 'TXT', 'PTR',
@@ -84,7 +92,7 @@ const server = dnsd.createServer((req, res) => {
     debug(timeStamp + ` via local +${Date.now() -  start}ms`);
     return res.end();;
   }
-  
+
   const server = {};
   for (let fwz of option.forwardZone) {
     if (fwz.match(question.name)) {
