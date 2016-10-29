@@ -124,51 +124,13 @@ const server = dnsd.createServer((req, res) => {
   });
 
   forwardReq.on('message', (err, message) => {
-    const anw = question.type == 'CNAME' ? 'authority' : 'message.answer';
-    res[anw] = message[anw].map((rec) => {
-      rec.type = consts.qtypeToName(rec.type);
-      rec.class = consts.QCLASS_TO_NAME[rec.class] || 'IN';
-      switch (rec.type) {
-        case 'A':
-          rec.data = rec.address;
-          break;
-        case 'AAAA':
-          rec.data = ip6.normalize(rec.address);
-          break;
-        case 'CNAME':
-          rec.data = [
-            rec.primary,
-            rec.admin,
-            rec.serial,
-            rec.refresh,
-            rec.retry,
-            rec.expiration,
-            rec.minimum
-          ];
-          break;
-        case 'MX':
-          rec.data = [rec.priority, rec.exchange];
-          break;
-        case 'TXT':
-        case 'SPF':
-          rec.data = rec.data;
-          break;
-        case 'SOA':
-          rec.data = {
-            rname: rec.primary,
-            mname: rec.admin,
-            serial: rec.serial,
-            refresh: rec.refresh,
-            retry: rec.retry,
-            expire: rec.expiration,
-            ttl: rec.minimum
-          };
-          break;
-        case 'SRV':
-          rec.data = rec;
-          break;
-      }
-      return rec;
+    if (err) {
+      res.responseCode = 2;
+      debug('forward error', err);
+      return;
+    }
+    ['authority', 'answer'].forEach(k => {
+      if (message[k]) res[k] = message[k].map(v => convert(v));
     });
   });
 
@@ -182,6 +144,56 @@ const server = dnsd.createServer((req, res) => {
 
 function pad(n, m, holder = '0') {
   return String(Array(n + 1).join(holder) + m).slice(-n);
+}
+
+// convert from node-dns to dnsd
+function convert(rec) {
+  rec.type = consts.qtypeToName(rec.type);
+  rec.class = consts.QCLASS_TO_NAME[rec.class] || 'IN';
+  switch (rec.type) {
+    case 'A':
+      rec.data = rec.address;
+      break;
+    case 'AAAA':
+      rec.data = ip6.normalize(rec.address);
+      break;
+    case 'CNAME':
+      rec.data = [
+        rec.primary,
+        rec.admin,
+        rec.serial,
+        rec.refresh,
+        rec.retry,
+        rec.expiration,
+        rec.minimum
+      ];
+      break;
+    case 'MX':
+      rec.data = [rec.priority, rec.exchange];
+      break;
+    case 'TXT':
+    case 'SPF':
+      rec.data = rec.data;
+      break;
+    case 'SOA':
+      rec.data = {
+        rname: rec.primary,
+        mname: rec.admin,
+        serial: rec.serial,
+        refresh: rec.refresh,
+        retry: rec.retry,
+        expire: rec.expiration,
+        ttl: rec.minimum
+      };
+      break;
+    case 'SRV':
+      rec.data = {};
+      ['priority', 'weight', 'port', 'target'].forEach(key => {
+        rec.data[key] = rec[key];
+      });
+      break;
+  }
+  return rec;
 }
 
 server.listen(option.port, option.address, () => {
