@@ -124,8 +124,8 @@ const server = dnsd.createServer((req, res) => {
   });
 
   forwardReq.on('message', (err, message) => {
-    const anw = question.type == 'CNAME' ? message.authority : message.answer;
-    res.answer = anw.map((rec) => {
+    const anw = question.type == 'CNAME' ? 'authority' : 'message.answer';
+    res[anw] = message[anw].map((rec) => {
       rec.type = consts.qtypeToName(rec.type);
       rec.class = consts.QCLASS_TO_NAME[rec.class] || 'IN';
       switch (rec.type) {
