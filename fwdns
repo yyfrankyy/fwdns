@@ -10,7 +10,6 @@ const dns = require('./dns/dns');
 const Zone = require('./zone');
 const consts = require('./packet/').consts;
 const ip6 = require('ip6');
-const IP_REGEX = /^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$/;
 const NodeCache = require('node-cache');
 const cache = new NodeCache({ useClones: false });
 
@@ -21,9 +20,7 @@ function collectZone(zone, zones) {
       zones.push(new Zone(zone.hosts, zone.names));
     }
   } else {
-    if (IP_REGEX.test(zone)) {
-      zones.push(zone);
-    }
+    zones.push(zone);
   }
   return zones;
 }
@@ -119,6 +116,12 @@ const server = dnsd.createServer((req, res) => {
   if (!server.address) server.address = option.zone[0];
 
   timeStamp += ' via ' + server.address;
+
+  let address = server.address.split(':');
+  if (address.length > 1) {
+    server.port = address[1];
+    server.address = address[0];
+  }
 
   question.class = consts.NAME_TO_QCLASS[question.class] || 1;
 
