@@ -12,6 +12,7 @@ const consts = require('./packet/').consts;
 const ip6 = require('ip6');
 const NodeCache = require('node-cache');
 const cache = new NodeCache({ useClones: false });
+const race = require('async').race;
 
 function collectZone(zone, zones) {
   if (zone.endsWith('.json')) {
@@ -74,6 +75,8 @@ const server = dnsd.createServer((req, res) => {
   let timeStamp = [
     tag, req.opcode, hostname, question.class, question.type].join(' ');
 
+  question.class = consts.NAME_TO_QCLASS[question.class] || 1;
+
   // TODO unsupported due to dnsd's broken implementation.
   if (SupportTypes.indexOf(question.type) === -1) {
     debug(timeStamp + ` +${Date.now() -  start}ms`);
@@ -107,69 +110,34 @@ const server = dnsd.createServer((req, res) => {
       }
     });
     debug(timeStamp + ` via local +${Date.now() -  start}ms`);
-    save(res);
-    return res.end();;
+    return res.end();
   }
 
-  const server = {};
+  let server = [];
   for (let fwz of option.forwardZone) {
     if (fwz.match(question.name)) {
-      server.address = fwz.hosts[0];
+      server = fwz.hosts;
       break;
     }
   }
 
-  if (!server.address) server.address = option.zone[0];
+  if (server.length === 0) server = option.zone;
 
-  timeStamp += ' via ' + server.address;
+  timeStamp += ' via ' + server.join(',');
 
-  let address = server.address.split(':');
-  if (address.length > 1) {
-    server.port = address[1];
-    server.address = address[0];
-  }
-
-  question.class = consts.NAME_TO_QCLASS[question.class] || 1;
-  res.server = server;
-
-  const forwardReq = dns.Request({
-    question: dns.Question(question),
-    server: server,
-    timeout: option.timeout,
-  });
-
-  forwardReq.on('timeout', () => {
-    res.responseCode = 2;
-    debug('Timeout in making request');
-  });
-
-  forwardReq.on('error', err => {
-    res.responseCode = 2;
-    debug('forward error', err);
-  });
-
-  forwardReq.on('message', (err, message) => {
+  doMultiQuery(question, server, (err, data) => {
     if (err) {
       res.responseCode = 2;
-      debug('forward error', err);
-      return;
+    } else {
+      copy(data, res);
     }
-    ['authority', 'answer'].forEach(k => {
-      if (message[k]) {
-        res[k] = message[k]
-          .filter(v => v.type === consts.nameToQtype(question.type))
-          .map(convert);
-      }
+    debug(timeStamp + ` +${Date.now() -  start}ms`);
+    res.end();
+    return process.nextTick(() => {
+      data.server = server;
+      save(question, data);
     });
   });
-
-  forwardReq.on('end', () => {
-    debug(timeStamp + ` +${Date.now() -  start}ms`);
-    save(question, res);
-    res.end();
-  });
-
-  forwardReq.send();
 });
 
 function pad(n, m, holder = '0') {
@@ -235,7 +203,7 @@ function save(question, res) {
   if (lastQuery[question.name] &&
      (Date.now() - lastQuery[question.name]) / 1000 - option.renewTimeout < 0) {
     setTimeout(() => {
-      doQuery(question, res.server, (err, data) => {
+      doMultiQuery(question, res.server, (err, data) => {
         if (err) return;
         debug(`renew ${key}`);
         save(question, data);
@@ -254,6 +222,24 @@ function ttl(question) {
   return cache.getTtl(key);
 }
 
+function doMultiQuery(question, server, callback) {
+  race(server.map(s => {
+    let address = s.split(':');
+    s = {};
+    s.address = address[0];
+    if (address.length > 1) {
+      s.port = address[1];
+    }
+    return (callback) => {
+      const time = Date.now();
+      doQuery(question, s, (err, rep) => {
+        debug(`querying ${question.name} via ${s.address}:${s.port} +${Date.now() - time}ms`);
+        callback(err, rep);
+      });
+    };
+  }), callback);
+}
+
 function doQuery(question, server, callback) {
   const data = { server: server };
   const forwardReq = dns.Request({
@@ -264,7 +250,7 @@ function doQuery(question, server, callback) {
 
   forwardReq.on('timeout', () => {
     callback(new Error('timeout'));
-    debug('Timeout in making request');
+    debug(`querying ${question.name} via ${server.address}:${server.port} timeout`);
   });
 
   forwardReq.on('error', err => {

@@ -1,6 +1,6 @@
 {
   "name": "fwdns",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A DNS Forwarder",
   "bin": "./fwdns",
   "scripts": {
@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/yyfrankyy/fwdns#readme",
   "dependencies": {
+    "async": "^2.1.2",
     "binaryheap": "0.0.3",
     "buffercursor": "0.0.12",
     "commander": "^2.9.0",
