@@ -43,6 +43,9 @@ const option = require('commander')
   .option('-t, --timeout [5000]',
     'Timeout forwarding requests',
      val => parseInt(val), 5000)
+   .option('--renew-timeout [3600]',
+     'Timeout of auto renewal',
+      val => parseInt(val), 3600)
   .option('-f, --forward-zone [/path/to/forward/zone.json]',
     'Forward zone setting, {"hosts": ["8.8.8.8"], "names": ["google.com"]}',
      collectZone, [])
@@ -62,6 +65,8 @@ const SupportTypes = [
   //, 'DS' // unsupported by native-dns-packet
 ];
 
+const lastQuery = {};
+
 const server = dnsd.createServer((req, res) => {
   const question = req.question[0], hostname = question.name;
   const start = Date.now();
@@ -76,16 +81,17 @@ const server = dnsd.createServer((req, res) => {
     return res.end();
   }
 
+  lastQuery[question.name] = start;
+
   const cached = get(question);
   if (cached != null) {
-    const timeLeft = parseInt((ttl(question) - Date.now()) / 1000);
-    debug(timeStamp + ` via cache (ttl: ${timeLeft}) +${Date.now() -  start}ms`);
+    const time = parseInt((ttl(question) - Date.now()) / 1000);
+    debug(timeStamp + ` via cache (ttl: ${time}) +${Date.now() -  start}ms`);
     copy(cached, res, ['authority', 'answer'], (rec) => {
-      rec.ttl = timeLeft;
+      rec.ttl = time;
       return rec;
     });
-    res.end();
-    return;
+    return res.end();
   }
 
   let local = option.localZone[question.name];
@@ -124,6 +130,7 @@ const server = dnsd.createServer((req, res) => {
   }
 
   question.class = consts.NAME_TO_QCLASS[question.class] || 1;
+  res.server = server;
 
   const forwardReq = dns.Request({
     question: dns.Question(question),
@@ -222,8 +229,19 @@ function convert(rec) {
 function save(question, res) {
   const key = `${question.name} ${question.type}`;
   const o = res.authority.length > 0 ? res.authority : res.answer;
-  const ttl = o.map(v => v.ttl);
-  cache.set(key, copy(res), ttl.length > 0 ? ttl[0] : 600);
+  const ttls = o.map(v => v.ttl);
+  const ttl = ttls.length > 0 ? ttls[0] : 600;
+  cache.set(key, copy(res), ttl);
+  if (lastQuery[question.name] &&
+     (Date.now() - lastQuery[question.name]) / 1000 - option.renewTimeout < 0) {
+    setTimeout(() => {
+      doQuery(question, res.server, (err, data) => {
+        if (err) return;
+        debug(`renew ${key}`);
+        save(question, data);
+      });
+    }, (ttl * 1000) * 0.8);
+  }
 }
 
 function get(question) {
@@ -236,7 +254,47 @@ function ttl(question) {
   return cache.getTtl(key);
 }
 
-function copy(from, to = {}, keys = ['authority', 'answer'], mapper) {
+function doQuery(question, server, callback) {
+  const data = { server: server };
+  const forwardReq = dns.Request({
+    question: dns.Question(question),
+    server: server,
+    timeout: option.timeout,
+  });
+
+  forwardReq.on('timeout', () => {
+    callback(new Error('timeout'));
+    debug('Timeout in making request');
+  });
+
+  forwardReq.on('error', err => {
+    callback(err);
+    debug('forward error', err);
+  });
+
+  forwardReq.on('message', (err, message) => {
+    if (err) {
+      debug('forward error', err);
+      return;
+    }
+    ['authority', 'answer'].forEach(k => {
+      if (message[k]) {
+        data[k] = message[k]
+          .filter(v => v.type === consts.nameToQtype(question.type))
+          .map(convert);
+      }
+    });
+    callback(null, data);
+  });
+
+  forwardReq.on('end', () => {
+    //
+  });
+
+  forwardReq.send();
+}
+
+function copy(from, to = {}, keys = ['authority', 'answer', 'server'], mapper) {
   keys.forEach(k => {
     if (from[k]) {
       to[k] = mapper ? from[k].map(v => mapper(v)) : from[k];
