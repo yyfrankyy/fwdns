@@ -15,7 +15,7 @@ function collectZone(zone, zones) {
   if (zone.endsWith('.json')) {
     zone = require(zone);
     if (zone && Array.isArray(zone.hosts) && Array.isArray(zone.names)) {
-      zones.push(new Zone(name.hosts, zone.names));
+      zones.push(new Zone(zone.hosts, zone.names));
     }
   } else {
     zones.push(zone);
@@ -49,7 +49,7 @@ const server = dnsd.createServer((req, res) => {
   const question = req.question[0], hostname = question.name;
   const start = Date.now();
   const tag = `[${pad(5, req.id)}/${pad(4, req.connection.type, ' ')}]`;
-  const timeStamp = [
+  let timeStamp = [
     tag, req.opcode, hostname, question.class, question.type].join(' ');
 
   // TODO unsupported due to dnsd's broken implementation.
@@ -59,11 +59,23 @@ const server = dnsd.createServer((req, res) => {
     return res.end();
   }
 
+  const server = {};
+  for (let fwz of option.forwardZone) {
+    if (fwz.match(question.name)) {
+      server.address = fwz.hosts[0];
+      break;
+    }
+  }
+
+  if (!server.address) server.address = option.zone[0];
+
+  timeStamp += ' via ' + server.address;
+
   question.class = consts.NAME_TO_QCLASS[question.class] || 1;
 
   const forwardReq = dns.Request({
     question: dns.Question(question),
-    server: { address: option.zone[0] },
+    server: server,
     timeout: option.timeout,
   });
 
