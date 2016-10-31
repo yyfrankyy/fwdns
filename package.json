@@ -1,6 +1,6 @@
 {
   "name": "fwdns",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "A DNS Forwarder",
   "bin": "./fwdns",
   "scripts": {

@@ -46,7 +46,7 @@ const option = require('commander')
      val => parseInt(val), 5000)
    .option('--renew-timeout [3600]',
      'Timeout of auto renewal',
-      val => parseInt(val), 3600)
+      val => parseInt(val), 600)
   .option('-f, --forward-zone [/path/to/forward/zone.json]',
     'Forward zone setting, {"hosts": ["8.8.8.8"], "names": ["google.com"]}',
      collectZone, [])
@@ -88,7 +88,7 @@ const server = dnsd.createServer((req, res) => {
 
   const cached = get(question);
   if (cached != null) {
-    const time = parseInt((ttl(question) - Date.now()) / 1000);
+    const time = Math.max(0, parseInt((ttl(question) - Date.now()) / 1000));
     debug(timeStamp + ` via cache (ttl: ${time}) +${Date.now() -  start}ms`);
     copy(cached, res, ['authority', 'answer'], (rec) => {
       rec.ttl = time;
@@ -192,7 +192,6 @@ function convert(rec) {
       });
       break;
   }
-  // console.log(rec);
   return rec;
 }
 
