@@ -14,7 +14,7 @@ var SECTIONS = ['question', 'answer', 'authority', 'additional']
 function State () {
   var self = this
 
-  self.header = new Buffer(12)
+  self.header = Buffer.allocUnsafe(12)
   self.position = 0
 
   self.question   = []
@@ -99,20 +99,20 @@ State.prototype.record = function(section_name, record) {
     , clas = constants.class_to_number(record.class)
 
   // Write the type.
-  buf = new Buffer(2)
+  buf = Buffer.allocUnsafe(2)
   buf.writeUInt16BE(type, 0)
   body.push(buf)
   self.position += 2
 
   // Write the class.
-  buf = new Buffer(2)
+  buf = Buffer.allocUnsafe(2)
   buf.writeUInt16BE(clas, 0)
   body.push(buf)
   self.position += 2
 
   if(section_name != 'question') {
     // Write the TTL.
-    buf = new Buffer(4)
+    buf = Buffer.allocUnsafe(4)
     buf.writeUInt32BE(record.ttl || 0, 0)
     body.push(buf)
     self.position += 4
@@ -158,7 +158,7 @@ State.prototype.record = function(section_name, record) {
         break
       case 'IN TXT':
         rdata = record.data.map(function(part) {
-          part = new Buffer(part)
+          part = Buffer.from(part)
           return [part.length, part]
         })
         break
@@ -171,9 +171,9 @@ State.prototype.record = function(section_name, record) {
         break
       case 'IN DS':
         rdata = [ buf16(record.data.key_tag)
-                , new Buffer([record.data.algorithm])
-                , new Buffer([record.data.digest_type])
-                , new Buffer(record.data.digest)
+                , Buffer.from([record.data.algorithm])
+                , Buffer.from([record.data.digest_type])
+                , Buffer.from(record.data.digest)
                 ]
         break
       case 'NONE A':
@@ -186,7 +186,7 @@ State.prototype.record = function(section_name, record) {
 
     // Write the rdata length. (The position was already updated.)
     rdata = flat(rdata)
-    buf = new Buffer(2)
+    buf = Buffer.allocUnsafe(2)
     buf.writeUInt16BE(rdata.length, 0)
     body.push(buf)
     self.position += 2
@@ -194,54 +194,54 @@ State.prototype.record = function(section_name, record) {
     // Write the rdata.
     self.position += rdata.length
     if(rdata.length > 0)
-      body.push(new Buffer(rdata))
+      body.push(Buffer.from(rdata))
   }
 
   self[section_name].push(Buffer.concat(body))
 }
 
 State.prototype.encode = function(full_domain, position_offset, option) {
-  var self = this
-
-  var domain = full_domain
+  let self = this;
+  let domain = full_domain;
   domain = domain.replace(/\.$/, '') // Strip the trailing dot.
-  position = self.position + (position_offset || 0)
+  let bodyBuf = Buffer.allocUnsafe(domain.length + 1);
+  let position = this.position + (position_offset || 0);
+  let offset = 0;
 
-  var body = []
-    , bytes
+  let max_iterations = 40 // Enough for 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa
 
-  var i = 0
-  var max_iterations = 40 // Enough for 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa
-
-  while(++i < max_iterations) {
-    if(domain == '') {
+  while (max_iterations-- > 0) {
+    if (domain === '') {
       // Encode the root domain and be done.
-      body.push(new Buffer([0]))
-      return Buffer.concat(body)
+      return Buffer.concat([bodyBuf, Buffer.from([0])]);
     }
 
-    else if(self.domains[domain] && option !== 'nocompress') {
+    else if (this.domains[domain] && option !== 'nocompress') {
       // Encode a pointer and be done.
-      body.push(new Buffer([0xc0, self.domains[domain]]))
-      return Buffer.concat(body)
+      return Buffer.concat([
+        offset === bodyBuf.length ? bodyBuf : bodyBuf.slice(0, offset),
+        Buffer.from([0xc0, this.domains[domain]])
+      ]);
     }
 
     else {
       // Encode the next part of the domain, saving its position in the lookup table for later.
-      self.domains[domain] = position
+      this.domains[domain] = position + offset;
 
-      var parts = domain.split(/\./)
-        , car = parts[0]
-      domain = parts.slice(1).join('.')
+      let idx = domain.indexOf('.'), car;
+      if (idx === -1) {
+        car = domain;
+        domain = '';
+      } else {
+        car = domain.substring(0, idx);
+        domain = domain.substring(idx + 1);
+      }
 
       // Write the first part of the domain, with a length prefix.
-      //var part = parts[0]
-      var buf = new Buffer(car.length + 1)
-      buf.write(car, 1, car.length, 'ascii')
-      buf.writeUInt8(car.length, 0)
-      body.push(buf)
-      position += buf.length
-      //bytes.unshift(bytes.length)
+      bodyBuf.writeUInt8(car.length, offset);
+      offset++;
+      bodyBuf.write(car, offset, car.length, 'ascii');
+      offset += car.length;
     }
   }
 
@@ -254,13 +254,13 @@ State.prototype.encode = function(full_domain, position_offset, option) {
 //
 
 function buf32(value) {
-  var buf = new Buffer(4)
+  var buf = Buffer.allocUnsafe(4)
   buf.writeUInt32BE(value, 0)
   return buf
 }
 
 function buf16(value) {
-  var buf = new Buffer(2)
+  var buf = Buffer.allocUnsafe(2)
   buf.writeUInt16BE(value, 0)
   return buf
 }
@@ -283,5 +283,5 @@ function pair_to_buf(pair) {
   // Convert a string of two hex bytes, e.g. "89ab" to a buffer.
   if(! pair.match(/^[0-9a-fA-F]{4}$/))
     throw new Error('Bad '+record.type+' record data: ' + JSON.stringify(record))
-  return new Buffer(pair, 'hex')
+  return Buffer.from(pair, 'hex')
 }
