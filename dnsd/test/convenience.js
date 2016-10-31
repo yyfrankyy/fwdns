@@ -68,12 +68,14 @@ test('Common fields', function(t) {
   var msg = {'answer':[{}], 'authority':[{}, {}], 'additional':[{}, {}, {}]}
   convenient.final_response(msg)
 
-  t.equal(msg.answer[0].ttl, 3600, 'Automatically set answer TTL')
-  t.equal(msg.authority[0].ttl, 3600, 'Automatically set 1st authority TTL')
-  t.equal(msg.authority[1].ttl, 3600, 'Automatically set 2nd authority TTL')
-  t.equal(msg.additional[0].ttl, 3600, 'Automatically set 1st additional TTL')
-  t.equal(msg.additional[1].ttl, 3600, 'Automatically set 2nd additional TTL')
-  t.equal(msg.additional[2].ttl, 3600, 'Automatically set 3rd additional TTL')
+  const ttl = 0
+
+  t.equal(msg.answer[0].ttl, ttl, 'Automatically set answer TTL')
+  t.equal(msg.authority[0].ttl, ttl, 'Automatically set 1st authority TTL')
+  t.equal(msg.authority[1].ttl, ttl, 'Automatically set 2nd authority TTL')
+  t.equal(msg.additional[0].ttl, ttl, 'Automatically set 1st additional TTL')
+  t.equal(msg.additional[1].ttl, ttl, 'Automatically set 2nd additional TTL')
+  t.equal(msg.additional[2].ttl, ttl, 'Automatically set 3rd additional TTL')
 
   t.equal(msg.answer[0].class, 'IN', 'Automatically set answer class')
   t.equal(msg.authority[0].class, 'IN', 'Automatically set 1st authority class')
