@@ -4,7 +4,7 @@
   "description": "A DNS Forwarder",
   "bin": "./fwdns",
   "scripts": {
-    "test": "node_modules/.bin/mocha"
+    "test": "tap test/*.js --cov"
   },
   "repository": {
     "type": "git",
@@ -34,8 +34,7 @@
   },
   "devDependencies": {
     "benchmark": "^2.1.1",
-    "chai": "^3.5.0",
     "longjohn": "^0.2.11",
-    "mocha": "^3.1.2"
+    "tap": "^8.0.0"
   }
 }
