@@ -41,13 +41,15 @@ const option = require('commander')
   .version(require('./package.json').version)
   .option('-p, --port [6666]', 'Port to bind', val => parseInt(val), 6666)
   .option('-l, --listen [127.0.0.1]', 'Address to listen', '127.0.0.1')
-  .option('-z, --zone <8.8.8.8>', 'Default zone', collectZone, [])
+  .option('-z, --zone [8.8.8.8]',
+    'Default zone, use system by default',
+     collectZone, [])
   .option('-t, --timeout [5000]',
     'Timeout forwarding requests',
      val => parseInt(val), 5000)
-   .option('--renew-timeout [3600]',
-     'Timeout of auto renewal',
-      val => parseInt(val), 600)
+  .option('--renew-timeout [3600]',
+    'Timeout of auto renewal',
+     val => parseInt(val), 600)
   .option('-f, --forward-zone [/path/to/forward/zone.json]',
     'Forward zone setting, {"hosts": ["8.8.8.8"], "names": ["google.com"]}',
      collectZone, [])
@@ -246,7 +248,8 @@ function doMultiQuery(question, server, callback) {
     return (callback) => {
       const time = Date.now();
       doQuery(question, s, (err, rep) => {
-        debug(`querying ${question.name} via ${s.address}:${s.port} +${Date.now() - time}ms`);
+        debug(`querying ${question.name}` +
+           ` via ${s.address}:${s.port} +${Date.now() - time}ms`);
         callback(err, rep);
       });
     };
@@ -263,7 +266,8 @@ function doQuery(question, server, callback) {
 
   forwardReq.on('timeout', () => {
     callback(new Error('timeout'));
-    debug(`querying ${question.name} via ${server.address}:${server.port} timeout`);
+    debug(`querying ${question.name}` +
+      ` via ${server.address}:${server.port} timeout`);
   });
 
   forwardReq.on('error', err => {

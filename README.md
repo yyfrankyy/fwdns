@@ -16,7 +16,7 @@ $ fwdns -h
     -V, --version                                    output the version number
     -p, --port [6666]                                Port to bind
     -l, --listen [127.0.0.1]                         Address to listen
-    -z, --zone <8.8.8.8>                             Default zone
+    -z, --zone [8.8.8.8]                             Default zone, use system by default
     -t, --timeout [5000]                             Timeout forwarding requests
     --renew-timeout [3600]                           Timeout of auto renewal
     -f, --forward-zone [/path/to/forward/zone.json]  Forward zone setting, {"hosts": ["8.8.8.8"], "names": ["google.com"]}
@@ -27,14 +27,24 @@ $ fwdns -h
 
 ### Fast Zone Switching
 
-It's a very rare edge case for using a DNS forwarder like dnsmasq and unbound
-when there is over thousands of forward-zone settings. There is [a fork of dnsmasq](https://github.com/infinet/dnsmasq) solving the similar problems, both dnsmasq and unbound's CPU reach 100%
-over 10K of zones.
+It's a very rare edge case for using a DNS forwarder when there is over thousands
+of forward-zone settings. There is [a fork of dnsmasq](https://github.com/infinet/dnsmasq) solving the similar problems, both dnsmasq and unbound's CPU reach 100% over 10K of zones.
 
 With a pre-indexed map, we can archive less then 1ms for the query over 10K zones
 search, the algorithm is the same as [this fork](https://github.com/infinet/dnsmasq)
 although in JavaScript, the [implementation](https://github.com/yyfrankyy/fwdns/blob/master/zone.js)
 is much more easier. (but slower)
+
+Here is some benchmark result compare to regular loop, ([code](https://github.com/yyfrankyy/fwdns/blob/master/bench/zone.js)):
+
+```
+EndsWithLoop#hit x 758 ops/sec ±1.93% (81 runs sampled)
+RegExpLoop#hit x 90.88 ops/sec ±1.84% (66 runs sampled)
+ReverseIndex#hit x 719,606 ops/sec ±1.02% (83 runs sampled)
+EndsWithLoop#miss x 365 ops/sec ±1.26% (77 runs sampled)
+RegExpLoop#miss x 114 ops/sec ±1.12% (69 runs sampled)
+ReverseIndex#miss x 560,464 ops/sec ±0.91% (83 runs sampled)
+```
 
 ### Cache and Auto Renewal
 
@@ -59,7 +69,33 @@ Might be slightly slower then others at the first time or both hit cache due to
 JavaScript's performance.
 
 But I think with the auto renewal and race query, this maybe faster then others
-in the most daily usages.
+in the most daily usages, from client's aspect.
 
-As for my own bench via namebench, the avg. response is 106.49ms, lower then my
-dnsmasq(135ms) in the same machine (Raspberry Pi).
+### Dependencies's performance
+
+The libraries this project depends to, are not being maintained for a while,
+there are some performance tweaks can be done.
+
+For example, the packing processes of DNS packet in dnsd, gets improved to 3x
+faster due to [commit](https://github.com/yyfrankyy/fwdns/commit/4f28f1387669bcca8024a992ea634c4e280737ba):
+
+```
+- Original x 4,172 ops/sec ±1.49% (82 runs sampled)
++ indexOf & substring x 11,699 ops/sec ±1.06% (84 runs sampled)
++ Buffer.from x 11,663 ops/sec ±1.17% (81 runs sampled)
++ Body Buffer x 12,691 ops/sec ±1.11% (84 runs sampled)
+```
+
+### LICENSE
+
+```
+This software is licensed under the MIT License.
+
+Copyright (C) Frank Xu, 2016.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
