@@ -26,12 +26,8 @@ var net = require('net'),
     Packet = require('./packet'),
     consts = require('../../packet/').consts,
     UDPSocket = require('./utils').UDPSocket,
-    TCPSocket = require('./utils').TCPSocket;
-
-var debug = function() {
-  //var args = Array.prototype.slice.call(arguments);
-  //console.log.apply(this, ['pending', Date.now().toString()].concat(args));
-};
+    TCPSocket = require('./utils').TCPSocket,
+    debug = require('debug')('dns:pending');
 
 var SocketQueue = function(socket, server) {
   this._active = {};

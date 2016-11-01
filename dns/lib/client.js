@@ -28,7 +28,8 @@ var ipaddr = require('ipaddr.js'),
     Packet = require('./packet'),
     consts = require('../../packet/').consts,
     utils = require('./utils'),
-    platform = require('./platform');
+    platform = require('./platform'),
+    debug = require('debug')('dns:client');
 
 var A = consts.NAME_TO_QTYPE.A,
     AAAA = consts.NAME_TO_QTYPE.AAAA,
@@ -39,15 +40,6 @@ var A = consts.NAME_TO_QTYPE.A,
     SRV = consts.NAME_TO_QTYPE.SRV,
     PTR = consts.NAME_TO_QTYPE.PTR,
     TLSA = consts.NAME_TO_QTYPE.TLSA;
-
-var debug = function() {};
-
-if (process.env.NODE_DEBUG && process.env.NODE_DEBUG.match(/dns/)) {
-debug = function debug() {
-  var args = Array.prototype.slice.call(arguments);
-  console.error.apply(this, ['client', Date.now().toString()].concat(args));
-};
-}
 
 var Request = exports.Request = function(opts) {
   if (!(this instanceof Request)) return new Request(opts);
