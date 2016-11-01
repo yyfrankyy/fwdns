@@ -13,6 +13,7 @@ const ip6 = require('ip6');
 const NodeCache = require('node-cache');
 const cache = new NodeCache({ useClones: false });
 const race = require('async').race;
+const platform = require('./dns/lib/platform');
 
 function collectZone(zone, zones) {
   if (zone.endsWith('.json')) {
@@ -54,11 +55,6 @@ const option = require('commander')
     'Local zone setting, {"abc.com": "127.0.0.1"}',
      collectLocalZone, [])
   .parse(process.argv);
-
-if (option.zone.length === 0) {
-  console.error('a default zone is required. try `fwdns -z 8.8.8.8`');
-  process.exit(1);
-}
 
 const SupportTypes = [
   'A', 'MX', 'CNAME', 'TXT', 'PTR',
@@ -123,7 +119,7 @@ const server = dnsd.createServer((req, res) => {
 
   if (server.length === 0) server = option.zone;
 
-  timeStamp += ' via ' + server.join(',');
+  timeStamp += ' via ' + server.length === 0 ? 'system' : server.join(',');
 
   doMultiQuery(question, server, (err, data) => {
     if (err) {
@@ -230,6 +226,16 @@ function ttl(question) {
 }
 
 function doMultiQuery(question, server, callback) {
+  if (server.length === 0) {
+    const time = Date.now();
+    return dns.resolve(question.name, question.type, (err, ret, message) => {
+      if (err) return callback(err);
+      debug(`querying ${question.name} via system +${Date.now() - time}ms`);
+      const data = { server: server };
+      copy(message, data, ['authority', 'answer'], convert);
+      callback(null, data);
+    });
+  }
   race(server.map(s => {
     let address = s.split(':');
     s = {};

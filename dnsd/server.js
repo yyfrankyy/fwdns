@@ -233,7 +233,7 @@ Response.prototype.end = function(value) {
   else if(self.connection.type == 'tcp') {
     // Add the data length prefix.
     var length = data.length
-    data = Buffer.concat([ new Buffer([length >> 8, length & 255]), data ])
+    data = Buffer.concat([Buffer.from([length >> 8, length & 255]), data])
 
     self.connection.end(data, function(er) {
       if(er)

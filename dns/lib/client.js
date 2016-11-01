@@ -498,7 +498,7 @@ var resolve = function(domain, rrtype, ip, callback) {
       ret = undefined;
     }
 
-    callback(err, ret);
+    callback(err, ret, response);
   };
 
   return res;
