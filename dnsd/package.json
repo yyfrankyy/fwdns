@@ -28,6 +28,7 @@
     "defaultable": "~0.7.2"
   },
   "devDependencies": {
+    "benchmark": "^2.1.2",
     "tap": "^0.2.6"
   },
   "scripts": {
