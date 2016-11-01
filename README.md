@@ -61,7 +61,7 @@ seen for an hour, give up the next renewal.
 Sometimes the backend zones can be busy or the network maybe unstable for a
 while, we can waste some network and CPU resources to duplicate the request to
 different servers, and take the first response, this can be easily archive by
-async's [race](caolan.github.io/async/docs.html#race) function.
+[async's race function](https://caolan.github.io/async/docs.html#race).
 
 ## Performance
 
@@ -76,8 +76,8 @@ in the most daily usages, from client's aspect.
 The libraries this project depends to, are not being maintained for a while,
 there are some performance tweaks can be done.
 
-For example, the packing processes of DNS packet in dnsd, gets improved to 3x
-faster due to [commit](https://github.com/yyfrankyy/fwdns/commit/4f28f1387669bcca8024a992ea634c4e280737ba):
+For example, the packing processes of DNS packet in [dnsd](https://github.com/yyfrankyy/dnsd),
+gets improved to 3x faster due to [commit](https://github.com/yyfrankyy/fwdns/commit/4f28f1387669bcca8024a992ea634c4e280737ba):
 
 ```
 - Original x 4,172 ops/sec ±1.49% (82 runs sampled)
