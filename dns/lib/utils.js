@@ -36,7 +36,7 @@ var UDPSocket = exports.UDPSocket = function(socket, remote) {
 util.inherits(UDPSocket, EventEmitter);
 
 UDPSocket.prototype.buffer = function(size) {
-  this._buff = new Buffer(size);
+  this._buff = Buffer.allocUnsafe(size);
   return this._buff;
 };
 
@@ -92,7 +92,7 @@ var TCPSocket = exports.TCPSocket = function(socket) {
 util.inherits(TCPSocket, UDPSocket);
 
 TCPSocket.prototype.buffer = function(size) {
-  this._buff = new Buffer(size + 2);
+  this._buff = Buffer.allocUnsafe(size + 2);
   return this._buff.slice(2);
 };
 
